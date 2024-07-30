@@ -1,0 +1,84 @@
+{
+  "name": "SQLSERVER_TEST_BQ_EDDY",
+  "appVersion": "dcffea71-7939-11ee-b4cc-66fc0558f1d6",
+  "description": "Data Pipeline Application",
+  "change": {
+    "author": "cdap",
+    "creationTimeMillis": 1698899992457,
+    "latest": true,
+    "description": ""
+  },
+  "configuration": "{\"resources\":{\"memoryMB\":2048.0,\"virtualCores\":1.0},\"driverResources\":{\"memoryMB\":2048.0,\"virtualCores\":1.0},\"connections\":[{\"from\":\"unload_sqlserver_table\",\"to\":\"output_sqlserver_gcs\"},{\"from\":\"Read_tableSOurce\",\"to\":\"unload_sqlserver_table\"},{\"from\":\"unload_sqlserver_table\",\"to\":\"output_sqlserver_bq\"},{\"from\":\"unload_sqlserver_table\",\"to\":\"ErrorCollector\"},{\"from\":\"ErrorCollector\",\"to\":\"output_gcs_sqlserver\"},{\"from\":\"output_sqlserver_bq\",\"to\":\"BigQuery Execute\"}],\"comments\":[],\"postActions\":[],\"properties\":{},\"processTimingEnabled\":true,\"stageLoggingEnabled\":false,\"stages\":[{\"name\":\"unload_sqlserver_table\",\"plugin\":{\"name\":\"MultiTableDatabase\",\"type\":\"batchsource\",\"label\":\"unload_sqlserver_table\",\"artifact\":{\"name\":\"multi-table-plugins\",\"version\":\"1.4.0\",\"scope\":\"USER\"},\"properties\":{\"referenceName\":\"unload_sqlserver_table\",\"connectionString\":\"jdbc:sqlserver://10.20.21.7:1433;databaseName\\u003deddydb;trustServerCertificate\\u003dtrue\",\"jdbcPluginName\":\"sqlserver42\",\"user\":\"eddy-test\",\"password\":\"Xert1c42023*\",\"dataSelectionMode\":\"sql-statements\",\"transactionIsolationLevel\":\"TRANSACTION_SERIALIZABLE\",\"errorHandlingMode\":\"send-to-error-port\",\"tableNameField\":\"table_identifier\",\"sqlStatements\":\"${QueryUnload}\",\"tableAliases\":\"${TargetTable}\",\"enableAutoCommit\":\"false\",\"fetchSize\":\"1000\"}},\"information\":{\"comments\":{\"list\":[{\"content\":\"Ejecuta QueryUnload en la bd fuente\",\"createDate\":1.619032973953E12}]}},\"outputSchema\":[{\"name\":\"etlSchemaBody\",\"schema\":\"\"}],\"id\":\"unload_sqlserver_table\"},{\"name\":\"output_sqlserver_gcs\",\"plugin\":{\"name\":\"GCSMultiFiles\",\"type\":\"batchsink\",\"label\":\"output_sqlserver_gcs\",\"artifact\":{\"name\":\"google-cloud\",\"version\":\"0.22.2\",\"scope\":\"SYSTEM\"},\"properties\":{\"referenceName\":\"output_sqlserver_gcs\",\"project\":\"auto-detect\",\"path\":\"datafusion-eddy-bucket/raw_data\",\"format\":\"avro\",\"serviceAccountType\":\"filePath\",\"serviceFilePath\":\"auto-detect\",\"compressionCodec\":\"None\",\"splitField\":\"table_identifier\",\"allowFlexibleSchema\":\"true\",\"location\":\"us\",\"contentType\":\"application/octet-stream\",\"suffix\":\"yyyy-MM-dd-HH-mm\",\"useConnection\":\"false\"}},\"inputSchema\":[{\"name\":\"unload_sqlserver_table\",\"schema\":\"\"}],\"id\":\"output_sqlserver_gcs\"},{\"name\":\"Read_tableSOurce\",\"plugin\":{\"name\":\"BigQueryExecute\",\"type\":\"action\",\"label\":\"Read_tableSOurce\",\"artifact\":{\"name\":\"google-cloud\",\"version\":\"0.22.2\",\"scope\":\"SYSTEM\"},\"properties\":{\"project\":\"auto-detect\",\"sql\":\"SELECT \\r\\nSTRING_AGG(TargetTable||\\u0027_delta\\u0027,\\\";\\\" ORDER BY TargetTable) AS TargetTable, \\r\\n--\\r\\nSTRING_AGG(IF(TypeLoad \\u003d \\\"Full\\\",QueryUnload,QueryUnload||\\\" WHERE \\\"||DateFieldsDelta||\\\" BETWEEN \\u0027\\\"||DateStart||\\\"\\u0027 AND \\u0027\\\"||DateEnd||\\\"\\u0027\\\"),\\\";\\\" ORDER BY TargetTable) AS QueryUnload,\\r\\n--\\r\\nSTRING_AGG(IF(TypeLoad \\u003d \\\"Full\\\",QueryCreate,IF((SELECT COUNT(*) FROM DATA_FUSION_TEST.INFORMATION_SCHEMA.TABLES WHERE Table_Name \\u003d TargetTable)\\u003e0,QueryMerge,QueryCreate)) ,\\\";\\\" ORDER BY TargetTable)||\\\";\\\" AS QueryLoad,\\r\\n--\\r\\nSTRING_AGG(IF(TypeLoad !\\u003d \\\"Full\\\", \\u0027UPDATE `DATA_FUSION_TEST.eddy_tableSource` SET DateStart \\u003d (SELECT MAX (DATETIME(\\u0027||DateFieldsDelta||\\u0027)) FROM DATA_FUSION_TEST.\\u0027||TargetTable||\\u0027_delta), DateEnd \\u003d (SELECT DATE_ADD(MAX (DATETIME(\\u0027||DateFieldsDelta||\\u0027)), INTERVAL 10 DAY) FROM DATA_FUSION_TEST.\\u0027||TargetTable||\\u0027_delta) WHERE TargetTable \\u003d \\\"\\u0027||TargetTable||\\u0027\\\"\\u0027 ,\\u0027SELECT 1\\u0027),\\u0027;\\u0027)||\\\";\\\"  AS QueryUpdate\\r\\nFROM `DATA_FUSION_TEST.eddy_tableSource`\\r\\nWHERE IsActive \\u003d \\u0027Si\\u0027\",\"dialect\":\"standard\",\"mode\":\"interactive\",\"useCache\":\"false\",\"location\":\"US\",\"rowAsArguments\":\"true\",\"serviceAccountType\":\"filePath\",\"storeResults\":\"false\",\"serviceFilePath\":\"auto-detect\"}},\"information\":{\"comments\":{\"list\":[{\"content\":\"Obtiene consultas de la tabla fuente\",\"createDate\":1.619032973953E12}]}},\"outputSchema\":[{\"name\":\"etlSchemaBody\",\"schema\":\"\"}],\"id\":\"Read_tableSOurce\"},{\"name\":\"output_sqlserver_bq\",\"plugin\":{\"name\":\"BigQueryMultiTable\",\"type\":\"batchsink\",\"label\":\"output_sqlserver_bq\",\"artifact\":{\"name\":\"google-cloud\",\"version\":\"0.22.2\",\"scope\":\"SYSTEM\"},\"properties\":{\"referenceName\":\"output_sqlserver_bq\",\"project\":\"auto-detect\",\"dataset\":\"DATA_FUSION_TEST\",\"truncateTable\":\"true\",\"serviceAccountType\":\"filePath\",\"serviceFilePath\":\"auto-detect\",\"bucket\":\"datafusion-eddy-bucket\",\"splitField\":\"table_identifier\",\"allowFlexibleSchema\":\"true\",\"allowSchemaRelaxation\":\"true\",\"location\":\"US\",\"useConnection\":\"false\"}},\"outputSchema\":[{\"name\":\"etlSchemaBody\",\"schema\":\"\"}],\"inputSchema\":[{\"name\":\"unload_sqlserver_table\",\"schema\":\"\"}],\"id\":\"output_sqlserver_bq\"},{\"name\":\"ErrorCollector\",\"plugin\":{\"name\":\"ErrorCollector\",\"type\":\"errortransform\",\"label\":\"ErrorCollector\",\"artifact\":{\"name\":\"core-plugins\",\"version\":\"2.11.2\",\"scope\":\"SYSTEM\"},\"properties\":{\"messageField\":\"errMsg\",\"codeField\":\"errCode\",\"stageField\":\"errStage\"}},\"outputSchema\":[{\"name\":\"etlSchemaBody\",\"schema\":\"{\\\"name\\\":\\\"etlSchemaBody\\\",\\\"type\\\":\\\"record\\\",\\\"fields\\\":[{\\\"name\\\":\\\"errMsg\\\",\\\"type\\\":[\\\"string\\\",\\\"null\\\"]},{\\\"name\\\":\\\"errCode\\\",\\\"type\\\":[\\\"int\\\",\\\"null\\\"]},{\\\"name\\\":\\\"errStage\\\",\\\"type\\\":[\\\"string\\\",\\\"null\\\"]}]}\"}],\"inputSchema\":[{\"name\":\"unload_sqlserver_table\",\"schema\":\"\"}],\"id\":\"ErrorCollector\"},{\"name\":\"output_gcs_sqlserver\",\"plugin\":{\"name\":\"GCS\",\"type\":\"batchsink\",\"label\":\"output_gcs_sqlserver\",\"artifact\":{\"name\":\"google-cloud\",\"version\":\"0.22.2\",\"scope\":\"SYSTEM\"},\"properties\":{\"referenceName\":\"output_gcs_sqlserver\",\"project\":\"auto-detect\",\"path\":\"datafusion-eddy-bucket/logs_data/sqlserver/\",\"suffix\":\"yyyy-MM-dd-HH-mm\",\"format\":\"json\",\"serviceAccountType\":\"filePath\",\"serviceFilePath\":\"auto-detect\",\"location\":\"us\",\"contentType\":\"application/octet-stream\",\"schema\":\"{\\\"name\\\":\\\"etlSchemaBody\\\",\\\"type\\\":\\\"record\\\",\\\"fields\\\":[{\\\"name\\\":\\\"errMsg\\\",\\\"type\\\":[\\\"string\\\",\\\"null\\\"]},{\\\"name\\\":\\\"errCode\\\",\\\"type\\\":[\\\"int\\\",\\\"null\\\"]},{\\\"name\\\":\\\"errStage\\\",\\\"type\\\":[\\\"string\\\",\\\"null\\\"]}]}\",\"useConnection\":\"false\"}},\"outputSchema\":\"{\\\"name\\\":\\\"etlSchemaBody\\\",\\\"type\\\":\\\"record\\\",\\\"fields\\\":[{\\\"name\\\":\\\"errMsg\\\",\\\"type\\\":[\\\"string\\\",\\\"null\\\"]},{\\\"name\\\":\\\"errCode\\\",\\\"type\\\":[\\\"int\\\",\\\"null\\\"]},{\\\"name\\\":\\\"errStage\\\",\\\"type\\\":[\\\"string\\\",\\\"null\\\"]}]}\",\"inputSchema\":[{\"name\":\"ErrorCollector\",\"schema\":\"{\\\"name\\\":\\\"etlSchemaBody\\\",\\\"type\\\":\\\"record\\\",\\\"fields\\\":[{\\\"name\\\":\\\"errMsg\\\",\\\"type\\\":[\\\"string\\\",\\\"null\\\"]},{\\\"name\\\":\\\"errCode\\\",\\\"type\\\":[\\\"int\\\",\\\"null\\\"]},{\\\"name\\\":\\\"errStage\\\",\\\"type\\\":[\\\"string\\\",\\\"null\\\"]}]}\"}],\"id\":\"output_gcs_sqlserver\"},{\"name\":\"BigQuery Execute\",\"plugin\":{\"name\":\"BigQueryExecute\",\"type\":\"action\",\"label\":\"BigQuery Execute\",\"artifact\":{\"name\":\"google-cloud\",\"version\":\"0.22.2\",\"scope\":\"SYSTEM\"},\"properties\":{\"project\":\"auto-detect\",\"sql\":\"${QueryLoad}\\n${QueryUpdate}\",\"dialect\":\"standard\",\"mode\":\"interactive\",\"useCache\":\"false\",\"location\":\"US\",\"rowAsArguments\":\"false\",\"serviceAccountType\":\"filePath\",\"serviceFilePath\":\"auto-detect\",\"storeResults\":\"false\"}},\"outputSchema\":[{\"name\":\"etlSchemaBody\",\"schema\":\"\"}],\"id\":\"BigQuery-Execute\"}],\"schedule\":\"0 * * * *\",\"engine\":\"spark\",\"numOfRecordsPreview\":100.0,\"rangeRecordsPreview\":{\"min\":1.0,\"max\":\"5000\"},\"description\":\"Data Pipeline Application\",\"maxConcurrentRuns\":1.0}",
+  "datasets": [],
+  "programs": [
+    {
+      "type": "Spark",
+      "app": "SQLSERVER_TEST_BQ_EDDY",
+      "name": "phase-2",
+      "description": "Sources \u0027unload_sqlserver_table\u0027 to sinks \u0027output_gcs_sqlserver\u0027, \u0027output_sqlserver_bq\u0027, \u0027output_sqlserver_gcs\u0027."
+    },
+    {
+      "type": "Workflow",
+      "app": "SQLSERVER_TEST_BQ_EDDY",
+      "name": "DataPipelineWorkflow",
+      "description": "Data Pipeline Workflow"
+    }
+  ],
+  "plugins": [
+    {
+      "id": "output_sqlserver_gcs",
+      "name": "GCSMultiFiles",
+      "type": "batchsink"
+    },
+    {
+      "id": "output_gcs_sqlserver",
+      "name": "GCS",
+      "type": "batchsink"
+    },
+    {
+      "id": "output_gcs_sqlserver:json",
+      "name": "json",
+      "type": "validatingOutputFormat"
+    },
+    {
+      "id": "output_sqlserver_gcs:format",
+      "name": "avro",
+      "type": "validatingOutputFormat"
+    },
+    {
+      "id": "BigQuery Execute",
+      "name": "BigQueryExecute",
+      "type": "action"
+    },
+    {
+      "id": "output_sqlserver_bq",
+      "name": "BigQueryMultiTable",
+      "type": "batchsink"
+    },
+    {
+      "id": "ErrorCollector",
+      "name": "ErrorCollector",
+      "type": "errortransform"
+    },
+    {
+      "id": "Read_tableSOurce",
+      "name": "BigQueryExecute",
+      "type": "action"
+    },
+    {
+      "id": "unload_sqlserver_table:jdbc.driver",
+      "name": "sqlserver42",
+      "type": "jdbc"
+    },
+    {
+      "id": "unload_sqlserver_table",
+      "name": "MultiTableDatabase",
+      "type": "batchsource"
+    }
+  ],
+  "artifact": {
+    "name": "cdap-data-pipeline",
+    "version": "6.9.2",
+    "scope": "SYSTEM"
+  }
+}
